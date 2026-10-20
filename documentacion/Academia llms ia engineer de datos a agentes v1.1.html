@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>De Datos a Agentes</title>
+<style>
+  :root{
+    --bg:#f5f7fb; --card:#ffffff; --text:#1c2230; --muted:#5a6477; --line:#e2e6ef;
+    --primary:#2f5bea; --primary-soft:#e8eeff; --ok:#0e9f6e; --warn:#d97706;
+    --code-bg:#0f172a; --code-text:#e2e8f0;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0e1117; --card:#161b26; --text:#e6e9f0; --muted:#9aa3b5; --line:#262d3d;
+      --primary:#7c9bff; --primary-soft:#1b2540; --ok:#34d399; --warn:#fbbf24;
+      --code-bg:#0a0d14; --code-text:#e2e8f0;
+    }
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.6}
+  header.hero{background:linear-gradient(135deg,#1d3fb8,#2f5bea 55%,#6a8cff);color:#fff;padding:52px 20px 70px;text-align:center}
+  header.hero h1{margin:0 0 8px;font-size:clamp(28px,6vw,44px)}
+  header.hero .sub{margin:0 auto;max-width:640px;opacity:.93;font-size:17px}
+  header.hero .date{display:inline-block;margin-top:16px;background:rgba(255,255,255,.18);padding:6px 16px;border-radius:999px;font-size:14px;font-weight:600}
+  main{max-width:900px;margin:0 auto;padding:0 16px 100px}
+  nav#indice,section{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:26px 24px;margin:22px 0;scroll-margin-top:14px}
+  nav#indice{margin-top:-40px;box-shadow:0 8px 24px rgba(0,0,0,.1)}
+  h2{margin:0 0 6px;font-size:25px;color:var(--primary)}
+  h2 .num{display:inline-block;background:var(--primary);color:#fff;border-radius:8px;padding:0 10px;margin-right:8px;font-size:19px}
+  h3{margin:22px 0 8px;font-size:18px}
+  p{margin:8px 0}
+  .lead{color:var(--muted);font-size:16px}
+  ul,ol{padding-left:22px}
+  code{background:var(--primary-soft);padding:1px 6px;border-radius:5px;font-size:.9em}
+  pre{background:var(--code-bg);color:var(--code-text);padding:14px 16px;border-radius:12px;overflow-x:auto;font-size:13.5px;line-height:1.55;margin:10px 0}
+  pre code{background:none;padding:0;color:inherit}
+  /* Índice */
+  nav#indice ol{list-style:none;padding:0;margin:14px 0 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:10px}
+  nav#indice a{display:flex;gap:10px;align-items:center;text-decoration:none;color:var(--text);background:var(--bg);border:1px solid var(--line);padding:10px 13px;border-radius:10px;transition:.15s}
+  nav#indice a:hover{border-color:var(--primary);background:var(--primary-soft)}
+  nav#indice a b{background:var(--primary);color:#fff;border-radius:7px;min-width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;font-size:14px}
+  /* Progreso */
+  .progress{margin:16px 0 4px}
+  .bar{height:12px;background:var(--line);border-radius:999px;overflow:hidden}
+  .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--primary),var(--ok));transition:width .25s}
+  .progress small{color:var(--muted)}
+  /* Intro */
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:12px 0}
+  .mini{border:1px solid var(--line);border-radius:12px;padding:14px 16px;background:var(--bg)}
+  .mini h4{margin:0 0 6px;color:var(--primary);font-size:16px}
+  .mini ul{margin:4px 0;padding-left:18px}
+  .tags{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+  .tags span{background:var(--primary-soft);color:var(--primary);padding:5px 12px;border-radius:999px;font-size:14px;font-weight:600}
+  /* Checklist */
+  .check{list-style:none;padding:0;margin:10px 0}
+  .check li{margin:8px 0}
+  .check label{display:flex;gap:12px;align-items:flex-start;cursor:pointer;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:11px 14px;transition:.15s}
+  .check label:hover{border-color:var(--primary)}
+  .check input{appearance:none;-webkit-appearance:none;flex:none;width:22px;height:22px;margin-top:2px;border:2px solid var(--primary);border-radius:6px;background:var(--card);cursor:pointer;position:relative}
+  .check input:checked{background:var(--ok);border-color:var(--ok)}
+  .check input:checked::after{content:"✓";position:absolute;inset:0;color:#fff;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center}
+  .check input:checked ~ .txt{opacity:.6;text-decoration:line-through}
+  .txt b{display:block}
+  .txt small{display:block;color:var(--muted);font-size:14px}
+  .sec-progress{font-size:13px;color:var(--muted);font-weight:600;margin-bottom:4px}
+  .back{display:inline-block;margin-top:16px;text-decoration:none;font-weight:600;font-size:14px;color:var(--primary);border:1px solid var(--primary);padding:7px 14px;border-radius:999px}
+  .back:hover{background:var(--primary);color:#fff}
+  .fab{position:fixed;right:16px;bottom:16px;z-index:50;background:var(--primary);color:#fff;text-decoration:none;font-weight:700;padding:12px 18px;border-radius:999px;box-shadow:0 6px 18px rgba(0,0,0,.3);font-size:15px}
+  button.reset{background:none;border:1px solid var(--warn);color:var(--warn);padding:6px 14px;border-radius:999px;font-weight:600;cursor:pointer;margin-top:10px}
+  .story{border-left:5px solid var(--primary);background:var(--primary-soft);padding:6px 16px;border-radius:0 12px 12px 0;margin:10px 0}
+  table.ver{width:100%;border-collapse:collapse;font-size:14px;margin-top:8px}
+  table.ver th,table.ver td{border:1px solid var(--line);padding:8px 10px;text-align:left}
+  table.ver th{background:var(--primary-soft)}
+  .note{border-left:5px solid var(--warn);background:var(--primary-soft);padding:10px 14px;border-radius:0 10px 10px 0;margin:12px 0;font-size:15px}
+  footer{text-align:center;color:var(--muted);padding:10px 0 30px;font-size:14px}
+</style>
+</head>
+<body id="top">
+
+<header class="hero">
+  <h1>De Datos a Agentes</h1>
+  <p class="sub">Checklist de herramientas, código y librerías para construir tu camino como AI Engineer</p>
+  <span class="date">📅 Sábado, 17 de octubre de 2026 · Versión 1.1</span>
+</header>
+
+<main>
+
+<nav id="indice">
+  <h2>📚 Índice</h2>
+  <p class="lead">Toca un tema para ir a él. Cada sección tiene un botón para volver aquí.</p>
+  <div class="progress">
+    <div class="bar"><i id="barTotal"></i></div>
+    <small id="txtTotal">0 de 0 completados</small>
+  </div>
+  <ol>
+    <li><a href="#intro"><b>1</b> Introducción</a></li>
+    <li><a href="#herramientas"><b>2</b> Herramientas y cuentas</a></li>
+    <li><a href="#codigo"><b>3</b> Código y lenguajes a dominar</a></li>
+    <li><a href="#datos"><b>4</b> Librerías: datos y limpieza</a></li>
+    <li><a href="#ml"><b>5</b> Librerías: Machine Learning</a></li>
+    <li><a href="#dl"><b>6</b> Librerías: Deep Learning</a></li>
+    <li><a href="#llm"><b>7</b> LLMs, prompts y salidas estructuradas</a></li>
+    <li><a href="#rag"><b>8</b> RAG: embeddings y bases vectoriales</a></li>
+    <li><a href="#agentes"><b>9</b> Agentes y orquestación</a></li>
+    <li><a href="#eval"><b>10</b> Evaluación y observabilidad</a></li>
+    <li><a href="#deploy"><b>11</b> Despliegue y producción</a></li>
+    <li><a href="#proyecto"><b>12</b> Hitos del proyecto final</a></li>
+    <li><a href="#versiones"><b>🗂️</b> Historial de versiones</a></li>
+  </ol>
+</nav>
+
+<!-- 1. Intro -->
+<section id="intro">
+  <h2><span class="num">1</span>Introducción</h2>
+  <p class="lead">Fecha de inicio: <b>17 de octubre de 2026</b>. Este checklist te guía para pasar de entender qué es la IA a construir sistemas reales que usan datos, modelos y agentes.</p>
+
+  <h3>Lo que vamos a hacer</h3>
+  <div class="story">
+    <p>Vamos a <b>automatizar un proceso real de punta a punta</b>: las facturas que llegan por correo a una empresa y que hoy alguien digita a mano.</p>
+    <p>Con <b>n8n</b> conectaremos el buzón con el resto del sistema sin armar todo desde cero. Un <b>LLM</b> leerá cada PDF y lo convertirá en datos ordenados, porque entiende documentos que no tienen formato fijo. <b>Pydantic</b> validará que esos datos tengan sentido antes de guardarlos en <b>Supabase</b>, que nos da base de datos y búsqueda vectorial en un solo lugar.</p>
+    <p>Con <b>pandas</b> y <b>scikit-learn</b> detectaremos gastos anómalos, y con <b>RAG</b> podremos preguntarle al sistema "¿cuánto gastamos en cemento este trimestre?" y recibir la respuesta con su fuente. Un <b>agente</b> avisará al responsable y redactará el reporte, siempre con aprobación humana antes de enviar. Por último, <b>FastAPI y Docker</b> lo dejarán en producción, y <b>LangSmith</b> nos mostrará cuánto cuesta y qué tan bien responde.</p>
+  </div>
+
+  <h3>¿Qué vamos a aprender?</h3>
+  <div class="tags">
+    <span>IA, ML, Deep Learning</span>
+    <span>IA Generativa y LLMs</span>
+    <span>Ciclo de vida del ML</span>
+    <span>Supervisado / No supervisado</span>
+    <span>Datos estructurados y no estructurados</span>
+    <span>Limpieza y feature engineering</span>
+    <span>Cómo se entrena un LLM</span>
+    <span>Prompting</span>
+    <span>RAG</span>
+    <span>Agentes con herramientas</span>
+    <span>Evaluación</span>
+    <span>Despliegue y monitoreo</span>
+  </div>
+
+  <h3>¿Por qué es importante?</h3>
+  <ul>
+    <li>La mayoría de la información de una empresa está en <b>documentos, correos y PDFs</b> que nadie aprovecha. Los LLMs permiten convertirla en datos útiles.</li>
+    <li>Las empresas no necesitan solo modelos, necesitan <b>sistemas que funcionen en producción</b>: ese es el trabajo de un AI Engineer.</li>
+    <li>Es una de las habilidades más demandadas: automatizar procesos manuales ahorra tiempo y dinero medibles.</li>
+    <li>Entender el ciclo completo te permite <b>elegir la herramienta correcta</b> (ML clásico, LLM o simples reglas) y no gastar de más.</li>
+  </ul>
+
+  <h3>¿Dónde se usa en la vida real?</h3>
+  <div class="grid">
+    <div class="mini"><h4>🏗️ Construcción</h4><ul><li>Predecir retrasos de obra</li><li>Leer facturas y planos</li><li>Controlar presupuesto</li></ul></div>
+    <div class="mini"><h4>🏢 Inmobiliario</h4><ul><li>Valorar propiedades</li><li>Calificar leads</li><li>Agente que atiende clientes</li></ul></div>
+    <div class="mini"><h4>🏦 Finanzas</h4><ul><li>Detectar fraude</li><li>Analizar riesgo de mora</li><li>Revisar contratos</li></ul></div>
+    <div class="mini"><h4>🛒 Comercio y logística</h4><ul><li>Predecir demanda</li><li>Optimizar inventario y rutas</li><li>Soporte automatizado</li></ul></div>
+    <div class="mini"><h4>🏥 Salud y educación</h4><ul><li>Resumir historiales</li><li>Tutores personalizados</li><li>Análisis de imágenes</li></ul></div>
+    <div class="mini"><h4>⚙️ Operaciones</h4><ul><li>Agentes sobre ERP y CRM</li><li>Automatizar reportes</li><li>Clasificar tickets y correos</li></ul></div>
+  </div>
+
+  <div class="note"><b>Cómo usar este archivo:</b> marca cada casilla al completarla. Tu avance se guarda en este navegador (si el almacenamiento está disponible) y la barra del índice muestra tu progreso total.</div>
+  <button class="reset" id="resetBtn">Reiniciar avance</button>
+  <br><a class="back" href="#indice">↑ Volver al índice</a>
+</section>
+
+<!-- 2. Herramientas -->
+<section id="herramientas">
+  <h2><span class="num">2</span>Herramientas y cuentas</h2>
+  <p class="lead">Lo que necesitas instalar o crear antes de empezar.</p>
+  <div class="sec-progress" data-for="herramientas"></div>
+  <ul class="check">
+    <li><label><input type="checkbox"><span class="txt"><b>Python 3.11 o superior</b><small>Lenguaje principal del ecosistema de IA</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>VS Code o Cursor</b><small>Editor de código con extensiones de Python y Jupyter</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Git y cuenta de GitHub</b><small>Control de versiones y portafolio público</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Jupyter Notebook / Google Colab</b><small>Para experimentar con datos y modelos</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Entorno virtual (venv o uv)</b><small>Aislar las librerías de cada proyecto</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Docker Desktop</b><small>Empaquetar y desplegar tus aplicaciones</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Supabase (PostgreSQL + pgvector)</b><small>Base de datos y base vectorial en un solo lugar</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Clave de API de un LLM (Claude u otro)</b><small>Guardada en un archivo <code>.env</code>, nunca en el código</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Cuenta de Hugging Face</b><small>Modelos y datasets abiertos</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Postman o Bruno</b><small>Probar APIs</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>n8n (opcional)</b><small>Automatización con conectores sin código</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Cuenta en Railway, Render o similar</b><small>Para desplegar tu API</small></span></label></li>
+  </ul>
+  <pre><code># Crear entorno virtual
+python -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+python --version</code></pre>
+  <a class="back" href="#indice">↑ Volver al índice</a>
+</section>
+
+<!-- 3. Código -->
+<section id="codigo">
+  <h2><span class="num">3</span>Código y lenguajes a dominar</h2>
+  <p class="lead">Conceptos de programación que usarás todos los días.</p>
+  <div class="sec-progress" data-for="codigo"></div>
+  <ul class="check">
+    <li><label><input type="checkbox"><span class="txt"><b>Python básico</b><small>Variables, funciones, listas, diccionarios, bucles, clases</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Manejo de archivos y errores</b><small>Leer CSV, JSON, PDF; <code>try / except</code></small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>SQL</b><small><code>SELECT</code>, <code>JOIN</code>, <code>GROUP BY</code>, filtros y agregaciones</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>JSON y validación con Pydantic</b><small>Estructurar y validar la salida de un LLM</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Consumir APIs REST</b><small><code>requests</code> / <code>httpx</code>, autenticación, manejo de errores</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Programación asíncrona (async / await)</b><small>Llamar varios servicios a la vez</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Variables de entorno</b><small><code>python-dotenv</code>, secretos fuera del repositorio</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Git desde la terminal</b><small><code>add</code>, <code>commit</code>, <code>push</code>, ramas</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Terminal / Bash básico</b><small>Navegar carpetas, ejecutar scripts, instalar paquetes</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Pruebas con pytest</b><small>Verificar que tu código siga funcionando</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>TypeScript básico (opcional)</b><small>Para integrar con aplicaciones web</small></span></label></li>
+  </ul>
+  <pre><code># Ejemplo: validar la salida de un LLM con Pydantic
+from pydantic import BaseModel
+
+class Factura(BaseModel):
+    proveedor: str
+    fecha: str
+    total: float
+
+datos = {"proveedor": "Cementos SA", "fecha": "2026-10-01", "total": 1250000.0}
+factura = Factura(**datos)   # lanza error si el formato es incorrecto
+print(factura.total)</code></pre>
+  <a class="back" href="#indice">↑ Volver al índice</a>
+</section>
+
+<!-- 4. Datos -->
+<section id="datos">
+  <h2><span class="num">4</span>Librerías: datos y limpieza</h2>
+  <p class="lead">Etapas 1 y 2 del ciclo: recolección y limpieza.</p>
+  <div class="sec-progress" data-for="datos"></div>
+  <ul class="check">
+    <li><label><input type="checkbox"><span class="txt"><b>pandas</b><small>Tablas de datos: leer, filtrar, limpiar, agrupar</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>numpy</b><small>Cálculo numérico</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>SQLAlchemy + psycopg2-binary</b><small>Conectar Python con bases de datos SQL</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>openpyxl</b><small>Leer y escribir archivos de Excel</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>pypdf / pdfplumber</b><small>Extraer texto y tablas de PDFs</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>pytesseract / Pillow</b><small>OCR sobre imágenes y documentos escaneados</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>BeautifulSoup / Playwright</b><small>Scraping cuando no hay API</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Great Expectations (opcional)</b><small>Validar la calidad de los datos</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>matplotlib / seaborn</b><small>Gráficos para explorar datos</small></span></label></li>
+  </ul>
+  <pre><code>pip install pandas numpy sqlalchemy psycopg2-binary openpyxl \
+            pypdf pdfplumber pillow pytesseract beautifulsoup4 \
+            matplotlib seaborn</code></pre>
+  <pre><code>import pandas as pd
+
+obras = pd.read_excel("obras.xlsx")
+obras = obras.drop_duplicates(subset="id_obra")
+obras["fecha_inicio"] = pd.to_datetime(obras["fecha_inicio"], errors="coerce")
+obras["ciudad"] = obras["ciudad"].str.strip().str.title()
+obras = obras[obras["presupuesto"] > 0]</code></pre>
+  <a class="back" href="#indice">↑ Volver al índice</a>
+</section>
+
+<!-- 5. ML -->
+<section id="ml">
+  <h2><span class="num">5</span>Librerías: Machine Learning</h2>
+  <p class="lead">Etapas 3 a 5: variables, entrenamiento y evaluación (supervisado y no supervisado).</p>
+  <div class="sec-progress" data-for="ml"></div>
+  <ul class="check">
+    <li><label><input type="checkbox"><span class="txt"><b>scikit-learn</b><small>Preprocesamiento, modelos clásicos, métricas, K-Means, PCA</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>XGBoost / LightGBM</b><small>Los más usados con datos tabulares</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>MLflow</b><small>Registrar experimentos y versiones de modelos</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>joblib</b><small>Guardar y cargar modelos entrenados</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Ejercicio supervisado</b><small>Predecir un resultado con datos etiquetados (ej. retraso de obra)</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Ejercicio no supervisado</b><small>Segmentar clientes con K-Means y explicar cada grupo</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Detección de anomalías</b><small>Isolation Forest sobre gastos o facturas</small></span></label></li>
+  </ul>
+  <pre><code>pip install scikit-learn xgboost lightgbm mlflow joblib</code></pre>
+  <pre><code>from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report
+from xgboost import XGBClassifier
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+modelo = XGBClassifier().fit(X_train, y_train)
+print(classification_report(y_test, modelo.predict(X_test)))</code></pre>
+  <a class="back" href="#indice">↑ Volver al índice</a>
+</section>
+
+<!-- 6. DL -->
+<section id="dl">
+  <h2><span class="num">6</span>Librerías: Deep Learning</h2>
+  <p class="lead">Redes neuronales, modelos abiertos y adaptación (fine-tuning).</p>
+  <div class="sec-progress" data-for="dl"></div>
+  <ul class="check">
+    <li><label><input type="checkbox"><span class="txt"><b>PyTorch</b><small>Framework principal de deep learning</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Hugging Face Transformers + datasets</b><small>Usar y descargar modelos y datos abiertos</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>PEFT / TRL</b><small>Fine-tuning eficiente con LoRA</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Whisper</b><small>Transcribir audio a texto</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Entender el concepto de tokenización</b><small>Cómo el texto se convierte en números</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Ejercicio: clasificar texto con un modelo preentrenado</b><small>Pipeline de Hugging Face en pocas líneas</small></span></label></li>
+  </ul>
+  <pre><code>pip install torch transformers datasets peft trl</code></pre>
+  <pre><code>from transformers import pipeline
+
+clasificador = pipeline("sentiment-analysis")
+print(clasificador("El servicio fue excelente y rápido"))</code></pre>
+  <div class="note">Usa Google Colab (GPU gratuita) para las pruebas de deep learning si tu computador no tiene tarjeta gráfica.</div>
+  <a class="back" href="#indice">↑ Volver al índice</a>
+</section>
+
+<!-- 7. LLM -->
+<section id="llm">
+  <h2><span class="num">7</span>LLMs, prompts y salidas estructuradas</h2>
+  <p class="lead">Trabajar con modelos de lenguaje ya entrenados.</p>
+  <div class="sec-progress" data-for="llm"></div>
+  <ul class="check">
+    <li><label><input type="checkbox"><span class="txt"><b>SDK del proveedor de LLM</b><small><code>anthropic</code> u otro cliente oficial</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>python-dotenv</b><small>Cargar la clave de API de forma segura</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Primera llamada a un LLM</b><small>Enviar un mensaje y leer la respuesta</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Prompts con rol, contexto y ejemplos</b><small>Instrucciones claras y ejemplos de entrada/salida</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Salida estructurada (JSON)</b><small>Validada con Pydantic</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Extracción de datos desde PDF o imagen</b><small>Factura a JSON con modelo multimodal</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Control de costos y tokens</b><small>Medir cuánto cuesta cada llamada</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Manejo de errores y reintentos</b><small>Límites de uso, tiempos de espera</small></span></label></li>
+  </ul>
+  <pre><code>pip install anthropic python-dotenv pydantic</code></pre>
+  <pre><code>import anthropic
+from dotenv import load_dotenv
+
+load_dotenv()                      # lee ANTHROPIC_API_KEY del archivo .env
+cliente = anthropic.Anthropic()
+
+respuesta = cliente.messages.create(
+    model="claude-sonnet-5-5",
+    max_tokens=500,
+    messages=[{"role": "user", "content": "Resume este contrato en 3 puntos: ..."}],
+)
+print(respuesta.content[0].text)</code></pre>
+  <a class="back" href="#indice">↑ Volver al índice</a>
+</section>
+
+<!-- 8. RAG -->
+<section id="rag">
+  <h2><span class="num">8</span>RAG: embeddings y bases vectoriales</h2>
+  <p class="lead">Darle al LLM acceso a los documentos del cliente sin reentrenarlo.</p>
+  <div class="sec-progress" data-for="rag"></div>
+  <ul class="check">
+    <li><label><input type="checkbox"><span class="txt"><b>Concepto de embedding</b><small>Representación numérica del significado de un texto</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Dividir documentos en fragmentos (chunking)</b><small>Tamaño y solapamiento adecuados</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>sentence-transformers u otro modelo de embeddings</b><small>Convertir fragmentos en vectores</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Base vectorial: pgvector (Supabase) o ChromaDB</b><small>Guardar y buscar por similitud</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>LangChain o LlamaIndex</b><small>Orquestar carga, búsqueda y respuesta</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Búsqueda + respuesta con citas</b><small>Indicar de qué documento y página viene cada dato</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Ejercicio: chatbot sobre contratos</b><small>Preguntas y respuestas sobre PDFs reales</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Reducir alucinaciones</b><small>Responder solo con la información recuperada</small></span></label></li>
+  </ul>
+  <pre><code>pip install sentence-transformers chromadb langchain llama-index pypdf</code></pre>
+  <pre><code>-- En Supabase: habilitar pgvector y crear tabla de fragmentos
+create extension if not exists vector;
+
+create table documentos (
+  id bigserial primary key,
+  contenido text,
+  embedding vector(384)
+);</code></pre>
+  <a class="back" href="#indice">↑ Volver al índice</a>
+</section>
+
+<!-- 9. Agentes -->
+<section id="agentes">
+  <h2><span class="num">9</span>Agentes y orquestación</h2>
+  <p class="lead">LLMs que deciden y ejecutan acciones usando herramientas.</p>
+  <div class="sec-progress" data-for="agentes"></div>
+  <ul class="check">
+    <li><label><input type="checkbox"><span class="txt"><b>Concepto de tool use (llamada a herramientas)</b><small>El modelo decide qué función llamar y con qué datos</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Definir herramientas como funciones</b><small>Consultar BD, enviar correo, crear tarea</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Bucle del agente</b><small>Pensar, actuar, observar, repetir hasta terminar</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>LangGraph (opcional)</b><small>Flujos de agentes con estado y pasos controlados</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>MCP (Model Context Protocol)</b><small>Conectar el agente con aplicaciones externas</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Memoria y contexto</b><small>Qué recuerda el agente entre pasos</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Permisos y aprobación humana</b><small>Confirmar antes de acciones críticas (enviar, borrar, pagar)</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Ejercicio: agente con 3 herramientas</b><small>Consultar base de datos, enviar correo y crear tarea</small></span></label></li>
+  </ul>
+  <pre><code>pip install langgraph langchain mcp</code></pre>
+  <pre><code># Herramienta simple que un agente podría llamar
+def consultar_gasto(categoria: str, trimestre: str) -> float:
+    """Devuelve el gasto total de una categoría en un trimestre."""
+    return base_de_datos.sumar(categoria, trimestre)</code></pre>
+  <a class="back" href="#indice">↑ Volver al índice</a>
+</section>
+
+<!-- 10. Eval -->
+<section id="eval">
+  <h2><span class="num">10</span>Evaluación y observabilidad</h2>
+  <p class="lead">Medir si tu sistema realmente funciona y por qué falla.</p>
+  <div class="sec-progress" data-for="eval"></div>
+  <ul class="check">
+    <li><label><input type="checkbox"><span class="txt"><b>Conjunto de prueba con respuestas conocidas</b><small>Al menos 30 a 50 casos reales etiquetados</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Métricas de extracción</b><small>Porcentaje de campos correctos por documento</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Métricas de RAG</b><small>Si recupera el fragmento correcto y si la respuesta es fiel</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>LangSmith o Langfuse</b><small>Ver cada paso, costo y latencia de tus llamadas</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>RAGAS (opcional)</b><small>Evaluación automática de sistemas RAG</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Evidently AI</b><small>Detectar cambios en los datos (drift)</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Pruebas automáticas con pytest</b><small>Ejecutar las evaluaciones cada vez que cambies el código</small></span></label></li>
+  </ul>
+  <pre><code>pip install langsmith ragas evidently pytest</code></pre>
+  <a class="back" href="#indice">↑ Volver al índice</a>
+</section>
+
+<!-- 11. Deploy -->
+<section id="deploy">
+  <h2><span class="num">11</span>Despliegue y producción</h2>
+  <p class="lead">Etapas 6 y 7: poner el sistema a funcionar y vigilarlo.</p>
+  <div class="sec-progress" data-for="deploy"></div>
+  <ul class="check">
+    <li><label><input type="checkbox"><span class="txt"><b>FastAPI + Uvicorn</b><small>Convertir tu modelo o agente en una API</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Dockerfile</b><small>Empaquetar la aplicación con todas sus dependencias</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Despliegue en la nube</b><small>Railway, Render, AWS, GCP o Azure</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Variables de entorno en producción</b><small>Claves de API fuera del código</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Registro de logs y errores</b><small>Saber qué pasó cuando algo falla</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Monitoreo de costos, latencia y calidad</b><small>Grafana, LangSmith o paneles propios</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Seguridad básica</b><small>Autenticación, límites de uso, no exponer datos sensibles</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Plan de reentrenamiento o actualización</b><small>Qué hacer cuando la calidad baja</small></span></label></li>
+  </ul>
+  <pre><code>pip install fastapi uvicorn</code></pre>
+  <pre><code>from fastapi import FastAPI
+
+app = FastAPI()
+
+@app.post("/predecir")
+def predecir(datos: dict):
+    prob = modelo.predict_proba([list(datos.values())])[0][1]
+    return {"prob_retraso": float(prob)}
+
+# Ejecutar: uvicorn main:app --reload</code></pre>
+  <pre><code># Dockerfile mínimo
+FROM python:3.11-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]</code></pre>
+  <a class="back" href="#indice">↑ Volver al índice</a>
+</section>
+
+<!-- 12. Proyecto -->
+<section id="proyecto">
+  <h2><span class="num">12</span>Hitos del proyecto final</h2>
+  <p class="lead">Un sistema integrador que procesa facturas, detecta anomalías y responde preguntas sobre los gastos.</p>
+  <div class="sec-progress" data-for="proyecto"></div>
+  <ul class="check">
+    <li><label><input type="checkbox"><span class="txt"><b>Reunir 50 facturas reales o de ejemplo</b><small>PDFs y fotos con formatos distintos</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Extraer cada factura a JSON validado</b><small>Proveedor, fecha, NIT, ítems y total</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Guardar los datos en Supabase</b><small>Con limpieza y deduplicación</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Modelo de anomalías o desvíos de presupuesto</b><small>Isolation Forest o XGBoost</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Asistente RAG para preguntas sobre gastos</b><small>Respuestas con datos y fuentes</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Agente que avisa y redacta reportes</b><small>Con aprobación humana antes de enviar</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Evaluación con métricas documentadas</b><small>Precisión, costo por factura y latencia</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>API desplegada y monitoreada</b><small>FastAPI + Docker + nube</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Repositorio público con README claro</b><small>Qué hace, cómo se instala, resultados</small></span></label></li>
+    <li><label><input type="checkbox"><span class="txt"><b>Video demo de 2 a 3 minutos</b><small>Para tu portafolio y hoja de vida</small></span></label></li>
+  </ul>
+  <a class="back" href="#indice">↑ Volver al índice</a>
+</section>
+
+<section id="versiones">
+  <h2>🗂️ Historial de versiones</h2>
+  <table class="ver">
+    <tr><th>Versión</th><th>Fecha</th><th>Cambios</th></tr>
+    <tr><td><b>1.1</b></td><td>17 de octubre de 2026</td><td>Se agrega el relato "Lo que vamos a hacer" a la introducción, con las herramientas y por qué se usan. Se agrega este historial.</td></tr>
+    <tr><td>1.0</td><td>17 de octubre de 2026</td><td>Primera versión: índice, introducción y checklists de herramientas, código y librerías.</td></tr>
+  </table>
+  <a class="back" href="#indice">↑ Volver al índice</a>
+</section>
+
+<footer>De Datos a Agentes · Versión 1.1 · actualizada el 17 de octubre de 2026</footer>
+</main>
+
+<a class="fab" href="#indice" aria-label="Volver al índice">☰ Índice</a>
+
+<script>
+(function(){
+  var boxes = Array.prototype.slice.call(document.querySelectorAll('.check input[type=checkbox]'));
+  var KEY = 'de-datos-a-agentes-v1';
+  var saved = {};
+  try { saved = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch(e){ saved = {}; }
+
+  boxes.forEach(function(b, i){
+    b.dataset.k = String(i);
+    if (saved[i]) b.checked = true;
+    b.addEventListener('change', function(){
+      saved[i] = b.checked ? 1 : 0;
+      try { localStorage.setItem(KEY, JSON.stringify(saved)); } catch(e){}
+      update();
+    });
+  });
+
+  function update(){
+    var done = boxes.filter(function(b){ return b.checked; }).length;
+    var total = boxes.length;
+    document.getElementById('barTotal').style.width = (total ? Math.round(done/total*100) : 0) + '%';
+    document.getElementById('txtTotal').textContent = done + ' de ' + total + ' completados (' + (total ? Math.round(done/total*100) : 0) + '%)';
+    document.querySelectorAll('.sec-progress').forEach(function(el){
+      var sec = document.getElementById(el.getAttribute('data-for'));
+      var inputs = sec.querySelectorAll('.check input[type=checkbox]');
+      var d = Array.prototype.filter.call(inputs, function(x){ return x.checked; }).length;
+      el.textContent = 'Avance de esta sección: ' + d + ' de ' + inputs.length;
+    });
+  }
+
+  document.getElementById('resetBtn').addEventListener('click', function(){
+    if (!confirm('¿Reiniciar todo el avance?')) return;
+    boxes.forEach(function(b){ b.checked = false; });
+    saved = {};
+    try { localStorage.removeItem(KEY); } catch(e){}
+    update();
+  });
+
+  update();
+})();
+</script>
+</body>
+</html>

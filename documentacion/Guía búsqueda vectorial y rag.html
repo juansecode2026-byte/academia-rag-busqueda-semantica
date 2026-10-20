@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Búsqueda vectorial y RAG</title>
+<style>
+  :root{
+    --bg:#f5f7fb; --card:#ffffff; --text:#1c2230; --muted:#5a6477; --line:#e2e6ef;
+    --primary:#2f5bea; --primary-soft:#e8eeff; --ok:#0e9f6e; --ok-soft:#e3f6ee; --warn:#c2410c; --warn-soft:#fff1e6;
+    --code-bg:#0f172a; --code-text:#e2e8f0;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0e1117; --card:#161b26; --text:#e6e9f0; --muted:#9aa3b5; --line:#262d3d;
+      --primary:#7c9bff; --primary-soft:#1b2540; --ok:#34d399; --ok-soft:#10261d; --warn:#fb923c; --warn-soft:#2a1a0e;
+      --code-bg:#0a0d14; --code-text:#e2e8f0;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0e1117; --card:#161b26; --text:#e6e9f0; --muted:#9aa3b5; --line:#262d3d;
+    --primary:#7c9bff; --primary-soft:#1b2540; --ok:#34d399; --ok-soft:#10261d; --warn:#fb923c; --warn-soft:#2a1a0e;
+    --code-bg:#0a0d14; --code-text:#e2e8f0;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.65}
+  header.hero{background:linear-gradient(135deg,#1d3fb8,#2f5bea 55%,#6a8cff);color:#fff;padding:50px 20px 72px;text-align:center}
+  header.hero .kicker{font-size:13px;letter-spacing:.12em;text-transform:uppercase;opacity:.85;font-weight:700}
+  header.hero h1{margin:8px 0 8px;font-size:clamp(28px,6vw,42px)}
+  header.hero p{margin:0 auto;max-width:680px;opacity:.93;font-size:17px}
+  header.hero .meta{display:inline-flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:16px}
+  header.hero .meta span{background:rgba(255,255,255,.18);padding:6px 14px;border-radius:999px;font-size:14px;font-weight:600}
+  main{max-width:920px;margin:0 auto;padding:0 16px 100px}
+  nav#indice,section{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:26px 24px;margin:22px 0;scroll-margin-top:14px}
+  nav#indice{margin-top:-42px;box-shadow:0 8px 24px rgba(0,0,0,.1)}
+  h2{margin:0 0 6px;font-size:25px;color:var(--primary)}
+  h2 .num{display:inline-block;background:var(--primary);color:#fff;border-radius:8px;padding:0 10px;margin-right:8px;font-size:19px}
+  h3{margin:24px 0 8px;font-size:18px}
+  p{margin:8px 0}
+  ul,ol{padding-left:22px;margin:8px 0}
+  li{margin:4px 0}
+  .lead{color:var(--muted);font-size:16px}
+  code{background:var(--primary-soft);padding:1px 6px;border-radius:5px;font-size:.9em}
+  pre{background:var(--code-bg);color:var(--code-text);padding:14px 16px;border-radius:12px;overflow-x:auto;font-size:13.5px;line-height:1.55;margin:10px 0}
+  pre code{background:none;padding:0;color:inherit}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:14.5px;display:block;overflow-x:auto}
+  th,td{border:1px solid var(--line);padding:8px 11px;text-align:left;vertical-align:top}
+  th{background:var(--primary-soft)}
+  td.n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+  .box{border-left:5px solid var(--primary);background:var(--primary-soft);padding:11px 15px;border-radius:0 10px 10px 0;margin:14px 0}
+  .box.ok{border-color:var(--ok);background:var(--ok-soft)}
+  .box.warn{border-color:var(--warn);background:var(--warn-soft)}
+  .box b.t{display:block;margin-bottom:2px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin:12px 0}
+  .mini{border:1px solid var(--line);border-radius:12px;padding:14px 16px;background:var(--bg)}
+  .mini h4{margin:0 0 6px;color:var(--primary);font-size:16px}
+  .tag{display:inline-block;font-size:12px;font-weight:700;padding:1px 8px;border-radius:999px;white-space:nowrap}
+  .medido{background:var(--ok-soft);color:var(--ok)}
+  .calculado{background:var(--primary-soft);color:var(--primary)}
+  .estimado{background:var(--warn-soft);color:var(--warn)}
+  .verificar{background:var(--line);color:var(--muted)}
+  nav#indice ol{list-style:none;padding:0;margin:14px 0 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:9px}
+  nav#indice a{display:flex;gap:10px;align-items:center;text-decoration:none;color:var(--text);background:var(--bg);border:1px solid var(--line);padding:10px 13px;border-radius:10px;transition:.15s}
+  nav#indice a:hover{border-color:var(--primary);background:var(--primary-soft)}
+  nav#indice a b{background:var(--primary);color:#fff;border-radius:7px;min-width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;font-size:14px;flex:none}
+  .flow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+  .flow .s{padding:8px 12px;border-radius:10px;font-weight:600;font-size:14px;border:1px solid var(--line);background:var(--bg)}
+  .flow .s.hot{background:var(--primary);color:#fff;border-color:var(--primary)}
+  .flow .a{color:var(--muted);font-weight:700}
+  .lane{border:1px dashed var(--line);border-radius:12px;padding:10px 14px;margin:10px 0}
+  .lane h4{margin:0 0 4px;font-size:15px}
+  .kws{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+  .kws span{background:var(--primary-soft);color:var(--primary);padding:5px 12px;border-radius:999px;font-size:14px;font-weight:600}
+  .story{border-left:5px solid var(--primary);background:var(--primary-soft);padding:6px 18px;border-radius:0 12px 12px 0;margin:12px 0}
+  .story p{margin:12px 0}
+  .story b{color:var(--primary)}
+  .usada{background:var(--ok-soft);color:var(--ok)}
+  .prevista{background:var(--line);color:var(--muted)}
+  .existente{background:var(--primary-soft);color:var(--primary)}
+  .back{display:inline-block;margin-top:16px;text-decoration:none;font-weight:600;font-size:14px;color:var(--primary);border:1px solid var(--primary);padding:7px 14px;border-radius:999px}
+  .back:hover{background:var(--primary);color:#fff}
+  .fab{position:fixed;right:16px;bottom:16px;z-index:50;background:var(--primary);color:#fff;text-decoration:none;font-weight:700;padding:12px 18px;border-radius:999px;box-shadow:0 6px 18px rgba(0,0,0,.3);font-size:15px}
+  .conclusiones{border:2px solid var(--primary);border-radius:14px;padding:14px 18px;margin:16px 0;font-family:Georgia,"Times New Roman",serif}
+  .conclusiones h4{margin:0 0 6px;font-family:inherit;letter-spacing:.08em;color:var(--primary)}
+  footer{text-align:center;color:var(--muted);padding:10px 0 30px;font-size:14px}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="kicker">Academia LLMs · IA Engineer</div>
+  <h1>Búsqueda vectorial y RAG</h1>
+  <p>Qué es, con qué se construye, dónde se conecta dentro de un sistema RAG, a qué proceso de tus repositorios se le aplica y cómo se mide con tiempo, tokens y calidad.</p>
+  <div class="meta"><span>📅 Domingo, 18 de octubre de 2026</span><span>Versión 1.1</span></div>
+</header>
+
+<main>
+
+<nav id="indice">
+  <h2>📚 Índice</h2>
+  <p class="lead">Toca un tema para ir a él. Cada sección termina con un botón para volver aquí, y el botón flotante «☰ Índice» está siempre visible.</p>
+  <ol>
+    <li><a href="#s1"><b>1</b> El proyecto y su relato (introducción)</a></li>
+    <li><a href="#s2"><b>2</b> Qué es la búsqueda vectorial</a></li>
+    <li><a href="#s3"><b>3</b> Dónde se conecta dentro de RAG</a></li>
+    <li><a href="#s4"><b>4</b> Herramientas y entorno</a></li>
+    <li><a href="#s5"><b>5</b> Cómo se hace, paso a paso</a></li>
+    <li><a href="#s6"><b>6</b> El proceso elegido en tus repositorios</a></li>
+    <li><a href="#s7"><b>7</b> Piloto medido</a></li>
+    <li><a href="#s8"><b>8</b> Qué hacer con la información recolectada</a></li>
+    <li><a href="#s9"><b>9</b> Cómo medirlo: tiempo, tokens y calidad</a></li>
+    <li><a href="#s10"><b>10</b> Palancas y conclusiones</a></li>
+    <li><a href="#s11"><b>11</b> Repositorio, script y registro DevMinus</a></li>
+    <li><a href="#s12"><b>12</b> Historial de versiones</a></li>
+  </ol>
+</nav>
+
+<!-- 1 -->
+<section id="s1">
+  <h2><span class="num">1</span>El proyecto y su relato</h2>
+  <p class="lead">Antes de la técnica, la historia: qué proceso vamos a mejorar, con qué piezas y por qué cada una está ahí.</p>
+
+  <div class="grid">
+    <div class="mini"><h4>Proyecto</h4>Asesor de Turismo Colombia (simulada): una IA de ventas que atiende por WhatsApp a 10 clientes ficticios. Repositorio base: <code>academia-llms-loop-harness-graph</code>.</div>
+    <div class="mini"><h4>Proceso a mejorar</h4>Cómo el asesor consulta el catálogo en cada mensaje del cliente.</div>
+    <div class="mini"><h4>Destino en producción</h4>candyCRM (<code>crm-ventas</code>), tabla <code>kb_chunks</code> con pgvector, hoy sin usar.</div>
+  </div>
+
+  <h3>Palabras clave</h3>
+  <div class="kws">
+    <span>RAG</span><span>búsqueda vectorial</span><span>embedding</span><span>similitud coseno</span><span>top-k</span>
+    <span>TF-IDF</span><span>scikit-learn</span><span>numpy</span><span>sentence-transformers</span>
+    <span>SQLite</span><span>Supabase</span><span>pgvector</span><span>HNSW</span><span>RLS</span><span>kb_chunks</span>
+    <span>Claude Haiku</span><span>SDK de Anthropic</span><span>tokens</span><span>línea base</span>
+    <span>recall@k</span><span>MRR</span><span>latencia</span><span>fidelidad</span><span>pytest</span>
+  </div>
+
+  <h3>Relato del proyecto</h3>
+  <div class="story">
+    <p>Todo empieza con un <b>asesor</b>: una IA de ventas que atiende por <b>WhatsApp</b> a 10 clientes simulados. Cada vez que el cliente escribe, el asesor llama a <b>Claude Haiku</b> con el <b>SDK de Anthropic</b> y le envía, junto al mensaje, <b>todo el catálogo</b>: 37 registros, <b>6.478 tokens</b>, el 68 % de la entrada de cada llamada. Es como entregarle la guía telefónica entera a alguien que solo preguntó por un restaurante.</p>
+    <p>La salida es <b>RAG</b>, generación aumentada por recuperación: en vez de enviar todo, <b>recuperamos</b> solo lo relevante. Para recuperar por significado usamos <b>búsqueda vectorial</b>. Cada registro del catálogo se convierte en un <b>vector</b> (un <b>embedding</b>), la pregunta del cliente también, y los registros cuyo vector queda más cerca, medido con <b>similitud coseno</b>, son los <b>top-k</b> que viajan al modelo.</p>
+    <p>En el piloto usamos <b>scikit-learn</b> y su <code>TfidfVectorizer</code> (<b>TF-IDF</b>), porque convierte texto en vectores sin descargar ningún modelo y nos deja medir hoy mismo, sin gastar un solo token. Tiene un límite: no entiende sinónimos. Por eso, en la construcción real pasamos a <b>sentence-transformers</b>, un modelo multilingüe, gratis y local que sí entiende que «luna de miel» y «romántico» hablan de lo mismo. Con <b>numpy</b> hacemos las operaciones con vectores.</p>
+    <p>Los vectores se guardan primero en <b>SQLite</b>, la misma base del piloto donde la tabla <code>ejecuciones</code> ya registra tokens y costo de cada llamada. Así cada configuración se compara contra la <b>línea base</b>: 184 llamadas, 0,2130 USD. En producción, el mismo diseño vive en <b>Supabase</b> con <b>pgvector</b>: candyCRM ya tiene la tabla <b>kb_chunks</b> con un índice <b>HNSW</b> y <b>RLS</b>, para que cada empresa vea solo su catálogo.</p>
+    <p>Medimos con <b>recall@k</b> (¿llegó el registro correcto?), <b>MRR</b> (¿llegó arriba?), <b>tokens</b> de catálogo por turno, <b>latencia</b> y costo por conversación. Con las 8 trampas del catálogo comprobamos la <b>fidelidad</b>: que el asesor siga sin inventar. <b>pytest</b> automatiza las pruebas de recuperación sin gastar tokens.</p>
+    <p>El resultado esperado: pasar de 6.478 a unos 1.000 tokens de catálogo por turno (−85 %, estimado), con la ciudad correcta en 40 de 40 casos del piloto, y un proceso que se puede llevar a cualquier empresa de candyCRM. Documentado con cifras medidas, eso es lo que construye la trayectoria en DevMinus.</p>
+  </div>
+
+  <h3>Las piezas del relato y por qué están ahí</h3>
+  <table>
+    <tr><th>Pieza</th><th>Para qué se usa</th><th>Por qué esta y no otra</th><th>Estado</th></tr>
+    <tr><td><b>scikit-learn</b> (<code>TfidfVectorizer</code>)</td><td>Vectores de texto y similitud coseno</td><td>No descarga modelos: permite medir ya y sin costo</td><td><span class="tag usada">usada en el piloto</span></td></tr>
+    <tr><td><b>numpy</b></td><td>Operaciones con vectores y top-k</td><td>Base del cálculo numérico; scikit-learn ya lo usa por dentro</td><td><span class="tag prevista">prevista</span></td></tr>
+    <tr><td><b>sentence-transformers</b></td><td>Embeddings que entienden significado</td><td>Multilingüe, gratis y local; entiende español y sinónimos</td><td><span class="tag prevista">prevista</span></td></tr>
+    <tr><td><b>SQLite</b></td><td>Guardar vectores junto a <code>ejecuciones</code></td><td>Es la base única del piloto; no se crea otra</td><td><span class="tag prevista">prevista</span></td></tr>
+    <tr><td><b>SDK de Anthropic</b> (Claude Haiku)</td><td>El modelo que responde al cliente</td><td>Único SDK del proyecto; Haiku bastó para consultar precios (tema 3.6)</td><td><span class="tag existente">ya existe en el asesor</span></td></tr>
+    <tr><td><b>Supabase + pgvector</b></td><td>Búsqueda vectorial en producción</td><td>Ya está en candyCRM, con índice HNSW y aislamiento por empresa</td><td><span class="tag existente">existe, sin usar</span></td></tr>
+    <tr><td><b>pytest</b></td><td>Pruebas de recuperación</td><td>Verifica el recall sin gastar tokens ni necesitar clave</td><td><span class="tag prevista">prevista</span></td></tr>
+  </table>
+
+  <h3>Por qué es importante</h3>
+  <ul>
+    <li><b>Costo:</b> el catálogo es el 68 % de los tokens de entrada de cada llamada <span class="tag medido">medido</span>.</li>
+    <li><b>Escala:</b> 37 registros caben en el prompt; los cientos de tours de una empresa real no caben, o cuestan demasiado.</li>
+    <li><b>Calidad:</b> menos texto irrelevante es menos ruido para el modelo.</li>
+    <li><b>Multiempresa:</b> en un CRM, cada cliente tiene su catálogo, y la búsqueda filtrada por empresa evita mezclarlos.</li>
+  </ul>
+
+  <h3>Dónde se usa en la vida real</h3>
+  <div class="grid">
+    <div class="mini"><h4>Ventas y soporte</h4>Copilotos que responden con el catálogo, las preguntas frecuentes y las políticas de la empresa.</div>
+    <div class="mini"><h4>Construcción e inmobiliario</h4>Buscar en contratos, especificaciones y actas por significado, no por palabra exacta.</div>
+    <div class="mini"><h4>Call center</h4>Encontrar llamadas parecidas a una queja nueva y ver cómo se resolvieron.</div>
+    <div class="mini"><h4>Contenido</h4>Recuperar los fragmentos de artículos scrapeados que hablan de un tema.</div>
+  </div>
+  <a class="back" href="#indice">↑ Volver al índice</a>
+</section>
+
+<!-- 2 -->
+<section id="s2">
+  <h2><span class="num">2</span>Qué es la búsqueda vectorial</h2>
+  <p class="lead">Buscar por <b>significado</b> en lugar de por palabras exactas.</p>
+
+  <h3>2.1 Embedding</h3>
+  <p>Un modelo de embeddings convierte un texto en una lista de números (un vector), por ejemplo de 384 o 1.536 posiciones. Textos con significado parecido quedan cerca en ese espacio, aunque no compartan palabras.</p>
+<pre><code>"hotel romántico frente al mar"   → [0.12, -0.40, 0.88, ...]
+"alojamiento para luna de miel"   → [0.10, -0.38, 0.85, ...]   ← cerca
+"tour de café en la montaña"      → [-0.70, 0.22, 0.05, ...]   ← lejos</code></pre>
+
+  <h3>2.2 Similitud</h3>
+  <p>Para saber qué tan cerca están dos vectores se usa casi siempre la <b>similitud coseno</b>: 1 significa misma dirección (mismo significado) y 0 significa sin relación. Buscar es comparar el vector de la pregunta contra los vectores guardados y quedarse con los <b>k</b> más parecidos (top-k).</p>
+
+  <h3>2.3 Búsqueda por palabra vs. por significado</h3>
+  <table>
+    <tr><th>Pregunta del cliente</th><th>Palabra clave (<code>ilike</code>)</th><th>Vectorial</th></tr>
+    <tr><td>"tours en Medellín"</td><td>Encuentra</td><td>Encuentra</td></tr>
+    <tr><td>"algo tranquilo para mi esposo que no le gusta caminar"</td><td>No encuentra nada</td><td>Trae tours de dificultad fácil y alojamientos accesibles</td></tr>
+    <tr><td>"luna de miel con playa"</td><td>No encuentra (ningún registro dice "luna de miel")</td><td>Trae hoteles boutique de Cartagena y San Andrés</td></tr>
+  </table>
+
+  <div class="box"><b class="t">En tus repositorios</b>La herramienta <code>consultar_catalogo</code> de <code>crm-ventas/agentes-sdk/chatbot-claude</code> busca con <code>ilike</code> por ciudad y nombre. Funciona cuando el cliente nombra la ciudad, y falla con preguntas vagas como las dos últimas de la tabla.</div>
+
+  <h3>2.4 Búsqueda híbrida</h3>
+  <p>En producción casi siempre conviene <b>combinar</b>: un filtro exacto (empresa, ciudad, precio máximo, publicado) más el orden por similitud. El filtro garantiza reglas de negocio y la similitud resuelve la intención.</p>
+  <a class="back" href="#indice">↑ Volver al índice</a>
+</section>
+
+<!-- 3 -->
+<section id="s3">
+  <h2><span class="num">3</span>Dónde se conecta dentro de RAG</h2>
+  <p class="lead">RAG tiene dos momentos. La búsqueda vectorial vive en ambos: en uno se prepara y en el otro se usa.</p>
+
+  <div class="lane">
+    <h4>A. Indexación (una vez, o cuando cambia el catálogo)</h4>
+    <div class="flow">
+      <span class="s">Catálogo / FAQ / documentos</span><span class="a">→</span>
+      <span class="s">Dividir en fragmentos</span><span class="a">→</span>
+      <span class="s hot">Generar embeddings</span><span class="a">→</span>
+      <span class="s hot">Guardar en base vectorial</span>
+    </div>
+  </div>
+  <div class="lane">
+    <h4>B. Consulta (en cada mensaje del cliente)</h4>
+    <div class="flow">
+      <span class="s">Mensaje del cliente</span><span class="a">→</span>
+      <span class="s hot">Embedding de la pregunta</span><span class="a">→</span>
+      <span class="s hot">Búsqueda top-k + filtros</span><span class="a">→</span>
+      <span class="s">Armar el prompt con lo recuperado</span><span class="a">→</span>
+      <span class="s">LLM responde</span><span class="a">→</span>
+      <span class="s">Registrar métricas</span>
+    </div>
+  </div>
+
+  <h3>3.1 En el asesor de Turismo Colombia</h3>
+  <p>Hoy <code>construir_system()</code> mete el catálogo completo en el <code>system</code>. Con RAG, el <code>system</code> queda con las instrucciones y reglas, y antes de cada llamada se agrega un bloque «Catálogo relevante» con los k registros recuperados.</p>
+<pre><code>Antes:  system = instrucciones + reglas + CATÁLOGO COMPLETO (6.478 tokens)
+Después: system = instrucciones + reglas
+         + bloque de contexto = top-k registros (~1.000 tokens)</code></pre>
+
+  <h3>3.2 En candyCRM</h3>
+  <p>La tabla <code>kb_chunks</code> (<code>tenant_id</code>, <code>contenido</code>, <code>embedding vector(1536)</code>, <code>fuente</code>, <code>metadata</code>) y su índice HNSW ya existen. Faltan tres piezas: el proceso que llena los embeddings, una función SQL de búsqueda filtrada por empresa y la llamada desde el panel copiloto o desde la herramienta del chatbot.</p>
+  <a class="back" href="#indice">↑ Volver al índice</a>
+</section>
+
+<!-- 4 -->
+<section id="s4">
+  <h2><span class="num">4</span>Herramientas y entorno</h2>
+
+  <h3>4.1 Modelo de embeddings</h3>
+  <table>
+    <tr><th>Opción</th><th>Dimensión</th><th>Cuándo usarla</th></tr>
+    <tr><td><b>sentence-transformers</b> multilingüe (ej. <code>paraphrase-multilingual-MiniLM-L12-v2</code>)</td><td>384</td><td>Práctica local en la academia: gratis, sin clave, corre en el computador y entiende español.</td></tr>
+    <tr><td><b>Voyage AI</b></td><td>1.024 por defecto (configurable)</td><td>Anthropic no tiene un modelo de embeddings propio y recomienda este proveedor. Buena opción para producción.</td></tr>
+    <tr><td><b>OpenAI</b> <code>text-embedding-3-small</code></td><td>1.536</td><td>Coincide con la columna <code>vector(1536)</code> que ya tiene <code>kb_chunks</code>.</td></tr>
+  </table>
+  <div class="box warn"><b class="t">Decisión abierta</b>La dimensión de la columna debe coincidir con el modelo. <code>kb_chunks</code> está en 1.536: o se usa un modelo de 1.536, o se crea una migración que la cambie (por ejemplo a 1.024 para Voyage). Esto se decide antes de llenar la tabla, porque cambiar de modelo obliga a recalcular todos los vectores.</div>
+
+  <h3>4.2 Base vectorial</h3>
+  <table>
+    <tr><th>Herramienta</th><th>Para qué</th></tr>
+    <tr><td><b>numpy + SQLite</b></td><td>Academia: guardar vectores junto a la base del piloto y buscar con producto punto. Con 37 registros sobra.</td></tr>
+    <tr><td><b>ChromaDB</b></td><td>Alternativa local con API simple, si se quiere una base vectorial dedicada.</td></tr>
+    <tr><td><b>Supabase + pgvector</b></td><td>Producción en candyCRM: ya está instalado, con índice HNSW y aislamiento por empresa.</td></tr>
+  </table>
+
+  <h3>4.3 Librerías</h3>
+  <table>
+    <tr><th>Librería</th><th>Para qué</th></tr>
+    <tr><td><code>sentence-transformers</code></td><td>Generar embeddings en local</td></tr>
+    <tr><td><code>numpy</code></td><td>Similitud coseno y top-k</td></tr>
+    <tr><td><code>anthropic</code></td><td>El LLM que responde (Haiku en el piloto)</td></tr>
+    <tr><td><code>python-dotenv</code></td><td>Claves en <code>.env</code></td></tr>
+    <tr><td><code>scikit-learn</code></td><td>Piloto sin descargar modelos (TF-IDF) y métricas</td></tr>
+    <tr><td><code>supabase</code> / <code>@supabase/supabase-js</code></td><td>Llamar la función de búsqueda desde Python o desde el frontend</td></tr>
+    <tr><td><code>pytest</code></td><td>Pruebas de recuperación sin gastar tokens</td></tr>
+  </table>
+
+  <h3>4.4 Entorno</h3>
+<pre><code># Windows (PowerShell), desde chat-consola/ de la academia LLMs
+python -m venv .venv
+.venv\Scripts\activate
+pip install sentence-transformers numpy anthropic python-dotenv scikit-learn pytest
+
+# La primera vez descarga el modelo (~470 MB); después funciona sin internet
+python -c "from sentence_transformers import SentenceTransformer as S; S('paraphrase-multilingual-MiniLM-L12-v2')"</code></pre>
+  <a class="back" href="#indice">↑ Volver al índice</a>
+</section>
+
+<!-- 5 -->
+<section id="s5">
+  <h2><span class="num">5</span>Cómo se hace, paso a paso</h2>
+
+  <h3>5.1 Preparar los fragmentos</h3>
+  <p>En un catálogo, <b>cada registro es un fragmento</b>: un tour, un alojamiento o un destino. Se convierte en una frase legible, porque el embedding funciona mejor con lenguaje natural que con JSON.</p>
+<pre><code>def a_texto(tipo, r):
+    if tipo == "alojamientos":
+        return (f"{r['nombre']}, {r['tipo']} en {r['ciudad']}. {r['resumen']} "
+                f"Ubicación: {r['ubicacion']}. Desde {r['precio_desde']:,} COP por noche. "
+                f"Accesible: {'sí' if r.get('accesible_movilidad_reducida') else 'no indicado'}.")
+    if tipo == "tours":
+        return (f"{r['nombre']}, tour {r['categoria']} en {r['ciudad']}. {r['resumen']} "
+                f"Duración {r['duracion']}, dificultad {r['dificultad']}. Desde {r['precio_desde']:,} COP.")
+    return f"{r['nombre']} ({r['region']}): {r['lema']}. {r['descripcion']}"</code></pre>
+
+  <h3>5.2 Generar y guardar los embeddings</h3>
+<pre><code>import json, sqlite3, numpy as np
+from sentence_transformers import SentenceTransformer
+
+modelo = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
+cat = json.load(open("datos-simulados/catalogo-turismo-simulado.json", encoding="utf-8"))
+filas = [(t, r) for t in ("destinos", "alojamientos", "tours") for r in cat[t]]
+textos = [a_texto(t, r) for t, r in filas]
+vectores = modelo.encode(textos, normalize_embeddings=True)   # normalizados: coseno = producto punto
+
+con = sqlite3.connect("datos-simulados/piloto-simulado.db")
+con.execute("create table if not exists catalogo_vectores "
+            "(slug text primary key, tipo text, ciudad text, texto text, vector blob)")
+for (t, r), txt, v in zip(filas, textos, vectores):
+    con.execute("insert or replace into catalogo_vectores values (?,?,?,?,?)",
+                (r["slug"], t, r.get("destino", r["slug"]), txt, v.astype("float32").tobytes()))
+con.commit()</code></pre>
+
+  <h3>5.3 Buscar</h3>
+<pre><code>def buscar(con, pregunta, k=6, ciudad=None):
+    q = modelo.encode([pregunta], normalize_embeddings=True)[0]
+    sql = "select slug, texto, vector from catalogo_vectores"
+    filas = con.execute(sql + (" where ciudad = ?" if ciudad else ""), (ciudad,) if ciudad else ()).fetchall()
+    M = np.vstack([np.frombuffer(v, dtype="float32") for _, _, v in filas])
+    sim = M @ q                                  # similitud coseno
+    orden = sim.argsort()[::-1][:k]
+    return [(filas[i][0], filas[i][1], float(sim[i])) for i in orden]</code></pre>
+
+  <h3>5.4 Conectar con el LLM</h3>
+<pre><code>def construir_peticion(messages, con):
+    consulta = " ".join(m["content"] for m in messages[-5:] if m["role"] == "user")  # últimos mensajes del cliente
+    recuperados = buscar(con, consulta, k=6)
+    contexto = "\n".join(f"- [{slug}] {texto}" for slug, texto, _ in recuperados)
+    system = SYSTEM_SIN_CATALOGO + "\n\nCatálogo relevante para esta conversación:\n" + contexto
+    return {"model": MODEL, "system": system, "messages": messages, "max_tokens": 1024}, recuperados</code></pre>
+  <div class="box"><b class="t">Por qué los últimos mensajes y no solo el último</b>"cuánto saldrían 5 noches ahí?" no dice dónde es "ahí". Usar los últimos 3 a 5 mensajes del cliente mantiene el tema de la conversación en la consulta.</div>
+
+  <h3>5.5 Producción en candyCRM (pgvector)</h3>
+<pre><code>-- Función de búsqueda, filtrada por empresa (tenant)
+create or replace function match_kb_chunks(
+  query_embedding extensions.vector(1536),
+  match_count int default 6,
+  min_similitud float default 0.3
+)
+returns table (id bigint, contenido text, fuente text, metadata jsonb, similitud float)
+language sql stable security invoker
+set search_path = public, extensions
+as $$
+  select id, contenido, fuente, metadata, 1 - (embedding <=> query_embedding) as similitud
+  from kb_chunks
+  where 1 - (embedding <=> query_embedding) >= min_similitud   -- RLS filtra por tenant
+  order by embedding <=> query_embedding
+  limit match_count;
+$$;</code></pre>
+  <div class="box warn"><b class="t">Seguridad</b>El aislamiento entre empresas debe hacerlo la política RLS de <code>kb_chunks</code> (<code>security invoker</code>), no un <code>tenant_id</code> que llegue como parámetro desde el cliente. Hay que confirmar que <code>kb_chunks</code> tenga su política antes de exponer la función.</div>
+  <a class="back" href="#indice">↑ Volver al índice</a>
+</section>
+
+<!-- 6 -->
+<section id="s6">
+  <h2><span class="num">6</span>El proceso elegido en tus repositorios</h2>
+  <p class="lead">Revisé los repositorios de GitHub. Tu computador no estaba disponible, así que la revisión se hizo sobre lo publicado en GitHub, que debería ser lo mismo que tienes en local.</p>
+
+  <h3>6.1 Candidatos</h3>
+  <table>
+    <tr><th>Repositorio</th><th>Proceso</th><th>¿Necesita búsqueda vectorial?</th></tr>
+    <tr><td><b>academia-llms-loop-harness-graph</b></td><td>Asesor de Turismo Colombia: catálogo completo en cada turno</td><td><b>Sí, el más claro.</b> El catálogo es el 68 % de la entrada y hay datos medidos para comparar. El README lo lista como «qué no demuestra todavía».</td></tr>
+    <tr><td><b>crm-ventas</b> (candyCRM)</td><td>Panel copiloto y herramienta <code>consultar_catalogo</code></td><td><b>Sí, en producción.</b> <code>kb_chunks</code> con pgvector está creada y sin usar; la búsqueda actual es por palabra (<code>ilike</code>).</td></tr>
+    <tr><td>Academia1-mapeo-dominio-scraping</td><td>Fichas de artículos para escribir uno propio</td><td>Útil más adelante: buscar fragmentos por tema entre artículos scrapeados. Hoy son 8 direcciones, así que no hace falta.</td></tr>
+    <tr><td>calificacion-llamadas-calidad-callcenter</td><td>Calificación de llamadas</td><td>Útil más adelante: encontrar llamadas parecidas a una queja nueva.</td></tr>
+  </table>
+
+  <h3>6.2 El elegido: catálogo del asesor, primero en la academia y después en candyCRM</h3>
+  <p>Se construye en la academia LLMs (en local, medible, sin tocar producción) y se transfiere a candyCRM, siguiendo la regla de tus proyectos: desde la academia no se modifican otros repositorios.</p>
+
+  <h3>6.3 Para qué se construye</h3>
+  <ul>
+    <li><b>Bajar costo y tamaño de cada llamada</b>, enviando solo lo relevante.</li>
+    <li><b>Responder preguntas vagas</b> ("algo tranquilo", "luna de miel") que la búsqueda por palabra no resuelve.</li>
+    <li><b>Escalar a catálogos reales</b> de cada empresa de candyCRM, que no caben en el prompt.</li>
+    <li><b>Usar lo que ya existe</b>: la tabla y el índice de candyCRM están listos.</li>
+  </ul>
+
+  <h3>6.4 Por qué es necesaria allí (con tus datos)</h3>
+  <table>
+    <tr><th>Dato</th><th>Valor</th><th>Estado</th><th>Fuente</th></tr>
+    <tr><td>Peso del catálogo en cada llamada</td><td class="n">6.478 tokens (68,2 %)</td><td><span class="tag medido">medido</span></td><td>radiografia-contexto.md</td></tr>
+    <tr><td>Catálogo que no sirve para lo que pregunta el cliente</td><td class="n">70 %</td><td><span class="tag calculado">calculado</span></td><td>radiografia-contexto.md</td></tr>
+    <tr><td>Ahorro con solo el catálogo de interés</td><td class="n">39 % del costo</td><td><span class="tag calculado">calculado</span></td><td>radiografia-contexto.md, palancas</td></tr>
+    <tr><td>Contenido repetido entre turnos</td><td class="n">96,7 %</td><td><span class="tag medido">medido</span></td><td>radiografia-contexto.md</td></tr>
+  </table>
+  <div class="box"><b class="t">Matiz de AI Engineer</b>En la radiografía, el «catálogo de interés» se calculó sabiendo de antemano qué ciudades le interesan a cada cliente. En la vida real nadie lo sabe por adelantado: la búsqueda vectorial es la forma de descubrirlo en cada turno a partir de lo que escribe el cliente.</div>
+  <a class="back" href="#indice">↑ Volver al índice</a>
+</section>
+
+<!-- 7 -->
+<section id="s7">
+  <h2><span class="num">7</span>Piloto medido</h2>
+  <p class="lead">Un primer experimento sin llamar a ningún modelo: los 184 mensajes de los 10 clientes simulados contra los 37 registros del catálogo. Script: <code>experimento/busqueda_tfidf.py</code>.</p>
+
+  <h3>7.1 Cómo se hizo</h3>
+  <ul>
+    <li><b>Vectores:</b> TF-IDF por fragmentos de letras. Es búsqueda vectorial, pero dispersa; se usó porque este entorno no podía descargar un modelo de embeddings. Con embeddings reales se espera igual o mejor recuperación en preguntas vagas.</li>
+    <li><b>Consulta:</b> los últimos 3 mensajes del cliente.</li>
+    <li><b>Tokens:</b> estimados por proporción de caracteres, calibrados con los 6.478 tokens medidos del catálogo completo.</li>
+    <li><b>Recall de destino:</b> cuando el cliente nombra una ciudad, ¿el top-k trae algún registro de esa ciudad? Hubo 40 menciones.</li>
+  </ul>
+
+  <h3>7.2 Resultados</h3>
+  <table>
+    <tr><th>Configuración</th><th>Catálogo por turno (tokens)</th><th>Ahorro de catálogo</th><th>Recall de destino</th></tr>
+    <tr><td>Catálogo completo (hoy)</td><td class="n">6.478 <span class="tag medido">medido</span></td><td class="n">0 %</td><td class="n">—</td></tr>
+    <tr><td>Solo ciudades de interés (conocidas de antemano)</td><td class="n">1.953 <span class="tag calculado">calculado</span></td><td class="n">70 %</td><td class="n">100 % por construcción</td></tr>
+    <tr><td>Búsqueda top-4</td><td class="n">654 <span class="tag estimado">estimado</span></td><td class="n">90 %</td><td class="n">39/40 (98 %) <span class="tag calculado">calculado</span></td></tr>
+    <tr><td><b>Búsqueda top-6</b></td><td class="n"><b>998</b> <span class="tag estimado">estimado</span></td><td class="n"><b>85 %</b></td><td class="n"><b>40/40 (100 %)</b> <span class="tag calculado">calculado</span></td></tr>
+    <tr><td>Búsqueda top-10</td><td class="n">1.693 <span class="tag estimado">estimado</span></td><td class="n">74 %</td><td class="n">40/40 (100 %) <span class="tag calculado">calculado</span></td></tr>
+  </table>
+
+  <h3>7.3 Lo que significa en dinero</h3>
+  <table>
+    <tr><th>Concepto</th><th>Tokens de catálogo (184 turnos)</th><th>Costo de las 184 llamadas</th><th>Estado</th></tr>
+    <tr><td>Línea base (tema 3.4)</td><td class="n">1.191.952</td><td class="n">0,2130 USD</td><td><span class="tag medido">medido</span></td></tr>
+    <tr><td>Con búsqueda top-6</td><td class="n">183.696</td><td class="n">≈ 0,112 USD (−47 %)</td><td><span class="tag estimado">estimado</span></td></tr>
+    <tr><td>Proyección: 1.000 conversaciones al mes</td><td class="n">—</td><td class="n">de ≈ 21 a ≈ 11 USD</td><td><span class="tag estimado">estimado</span></td></tr>
+  </table>
+  <p>El costo se estimó con la tarifa de entrada implícita en la tabla de palancas de tu radiografía (unos 0,10 USD por millón de tokens con Haiku), manteniendo igual la salida.</p>
+
+  <div class="box warn"><b class="t">Lo que este piloto NO mide todavía</b>Si las respuestas siguen siendo igual de buenas. El recall solo mira la ciudad, no si llegó el hotel exacto ni si el asesor sigue sin inventar en las 8 trampas. Eso se prueba repitiendo el piloto real con llamadas a la API y comparando contra la línea base. Hasta entonces, el ahorro es una estimación.</div>
+  <a class="back" href="#indice">↑ Volver al índice</a>
+</section>
+
+<!-- 8 -->
+<section id="s8">
+  <h2><span class="num">8</span>Qué hacer con la información recolectada</h2>
+  <p class="lead">Cada búsqueda deja un rastro: qué preguntó el cliente, qué se recuperó, con qué similitud y qué respondió el modelo. Para un AI Engineer, ese registro vale tanto como el sistema.</p>
+
+  <table>
+    <tr><th>Con el registro de…</th><th>Puedes…</th><th>Ejemplo</th></tr>
+    <tr><td>Preguntas con similitud máxima baja</td><td>Detectar huecos del catálogo</td><td>Muchos clientes preguntan por "avistamiento de ballenas" y nada supera 0,3: falta ese tour o falta una FAQ.</td></tr>
+    <tr><td>Registros más recuperados</td><td>Saber qué demanda el mercado</td><td>Si "casa-naranja-del-centro" aparece en casi todas las conversaciones de pareja, es candidato a destacarse o a revisar su precio.</td></tr>
+    <tr><td>Registros nunca recuperados</td><td>Limpiar o reescribir el catálogo</td><td>Un tour que nunca aparece puede tener una descripción pobre: se reescribe y se reindexa.</td></tr>
+    <tr><td>Pregunta → registros correctos</td><td>Armar un set de evaluación</td><td>50 preguntas reales con su respuesta esperada para medir cada cambio de modelo, k o fragmentación.</td></tr>
+    <tr><td>Similitud vs. respuesta correcta</td><td>Calibrar el umbral</td><td>Si por debajo de 0,35 casi siempre falla, por debajo de ese valor el asesor dice "lo confirmo con un asesor humano".</td></tr>
+    <tr><td>Tokens y tiempo por turno</td><td>Elegir k y modelo con datos</td><td>top-6 da el mismo recall que top-10 con 41 % menos tokens.</td></tr>
+    <tr><td>Preguntas frecuentes agrupadas</td><td>Crear respuestas fijas</td><td>Agrupar preguntas parecidas (clustering) y responder las 10 más comunes sin llamar al modelo.</td></tr>
+  </table>
+  <div class="box ok"><b class="t">Cómo se vende en DevMinus</b>Esto convierte un chatbot en un sistema que aprende de su uso: reportes mensuales de demanda y huecos del catálogo para la empresa cliente, con evidencia.</div>
+  <a class="back" href="#indice">↑ Volver al índice</a>
+</section>
+
+<!-- 9 -->
+<section id="s9">
+  <h2><span class="num">9</span>Cómo medirlo: tiempo, tokens y calidad</h2>
+
+  <h3>9.1 Métricas</h3>
+  <table>
+    <tr><th>Métrica</th><th>Qué responde</th><th>Cómo se mide</th><th>Meta inicial</th></tr>
+    <tr><td><b>Tokens de catálogo por turno</b></td><td>¿Cuánto contexto envío?</td><td>Contar tokens del bloque recuperado</td><td>&lt; 1.200</td></tr>
+    <tr><td><b>Tokens de entrada por llamada</b></td><td>¿Cuánto pago por turno?</td><td><code>usage.input_tokens</code></td><td>−40 % vs. línea base</td></tr>
+    <tr><td><b>Costo por conversación</b></td><td>¿Es rentable?</td><td>Suma de <code>costo_usd</code></td><td>&lt; 0,012 USD</td></tr>
+    <tr><td><b>Latencia de recuperación</b></td><td>¿La búsqueda frena la respuesta?</td><td>Cronómetro alrededor de <code>buscar()</code>, p50 y p95</td><td>p95 &lt; 300 ms</td></tr>
+    <tr><td><b>Latencia total</b></td><td>¿El cliente espera más?</td><td>Desde el mensaje hasta la respuesta</td><td>No empeorar</td></tr>
+    <tr><td><b>Recall@k</b></td><td>¿Llegó el registro correcto?</td><td>Set de evaluación pregunta → slug esperado</td><td>≥ 95 %</td></tr>
+    <tr><td><b>MRR</b></td><td>¿Llegó arriba en la lista?</td><td>1 / posición del primer acierto, promedio</td><td>≥ 0,8</td></tr>
+    <tr><td><b>Fidelidad</b></td><td>¿Respondió solo con lo recuperado?</td><td>Las 8 trampas + montos sin explicar</td><td>0 inventos</td></tr>
+    <tr><td><b>Tasa de "lo confirmo"</b></td><td>¿Cuántas veces no supo?</td><td>Respuestas que derivan a un asesor humano</td><td>Bajar sin inventar</td></tr>
+  </table>
+
+  <h3>9.2 Dónde se registran</h3>
+  <p>Tu tabla <code>ejecuciones</code> ya tiene la columna <code>catalogo</code> (hoy siempre "completo"). Basta con usar valores como <code>rag-k6</code> y agregar unas columnas:</p>
+<pre><code>alter table ejecuciones add column tokens_catalogo integer;
+alter table ejecuciones add column ms_recuperacion real;
+alter table ejecuciones add column slugs_recuperados text;   -- "casa-naranja-del-centro,cartagena,..."
+alter table ejecuciones add column similitud_max real;</code></pre>
+
+  <h3>9.3 Comparar configuraciones</h3>
+<pre><code>select catalogo,
+       count(*)                         as llamadas,
+       round(avg(tokens_entrada))       as entrada_prom,
+       round(avg(tokens_catalogo))      as catalogo_prom,
+       round(sum(costo_usd), 4)         as costo_usd,
+       round(avg(ms_recuperacion), 1)   as ms_busqueda
+from ejecuciones
+group by catalogo
+order by costo_usd desc;</code></pre>
+
+  <h3>9.4 Procesos importantes a medir</h3>
+  <ol>
+    <li><b>Indexación:</b> cuánto tarda y cuesta generar los vectores (una vez, y cada vez que cambia el catálogo).</li>
+    <li><b>Recuperación:</b> latencia y recall en cada turno.</li>
+    <li><b>Respuesta:</b> tokens, costo y fidelidad.</li>
+    <li><b>Mantenimiento:</b> qué pasa cuando cambia un precio. Si el vector no se actualiza, el asesor cita el precio viejo.</li>
+  </ol>
+  <a class="back" href="#indice">↑ Volver al índice</a>
+</section>
+
+<!-- 10 -->
+<section id="s10">
+  <h2><span class="num">10</span>Palancas y conclusiones</h2>
+  <table>
+    <tr><th>Palanca</th><th>Resultado esperado</th><th>Estado</th></tr>
+    <tr><td>Recuperar top-6 en vez del catálogo completo</td><td>−85 % de tokens de catálogo, ≈ −47 % de costo</td><td><span class="tag estimado">estimado</span></td></tr>
+    <tr><td>Búsqueda híbrida: filtro por ciudad mencionada + similitud</td><td>Menos registros irrelevantes cuando el cliente nombra la ciudad</td><td><span class="tag verificar">por verificar</span></td></tr>
+    <tr><td>Combinar con la ventana de 5 turnos y la ficha del cliente</td><td>Sumar el ahorro del historial sin olvidar el dato clave</td><td><span class="tag verificar">por verificar</span></td></tr>
+    <tr><td>Prompt caching del <code>system</code> fijo</td><td>Abaratar lo que se repite (96,7 % del contenido entre turnos). Hay que comparar contra RAG: el catálogo en caché es barato pero sigue ocupando contexto.</td><td><span class="tag verificar">por verificar</span></td></tr>
+    <tr><td>Umbral de similitud mínima</td><td>Derivar a un asesor humano en vez de responder con contexto débil</td><td><span class="tag verificar">por verificar</span></td></tr>
+  </table>
+
+  <div class="conclusiones">
+    <h4>CONCLUSIONES</h4>
+    <ol>
+      <li><b>Construir la búsqueda top-6 en <code>chat-consola</code> y repetir el piloto de 184 mensajes con llamadas reales.</b> Es la palanca de más peso: se espera pasar de 0,2130 a ≈ 0,112 USD <span class="tag estimado">estimado</span>.</li>
+      <li><b>Volver a correr las 8 trampas con RAG antes de dar el ahorro por bueno.</b> Si el asesor inventa porque no le llegó un registro, el ahorro no vale.</li>
+      <li><b>Armar un set de 30 a 50 preguntas con su slug esperado</b> para medir recall@k y MRR con embeddings reales, incluyendo preguntas vagas que hoy fallan con <code>ilike</code>.</li>
+      <li><b>Decidir la dimensión de <code>kb_chunks</code> (1.536 o 1.024) y crear <code>match_kb_chunks</code> con RLS por empresa</b> antes de llevarlo a candyCRM.</li>
+    </ol>
+  </div>
+  <a class="back" href="#indice">↑ Volver al índice</a>
+</section>
+
+<!-- 11 -->
+<section id="s11">
+  <h2><span class="num">11</span>Repositorio, script y registro DevMinus</h2>
+  <p class="lead">Esta guía vive en el repositorio <code>academia-busqueda-vectorial-rag</code>. Un script mantiene el checklist de construcción y registra la academia en la familia de academias para la trayectoria en DevMinus.</p>
+
+  <h3>11.1 Cómo funciona</h3>
+  <div class="flow">
+    <span class="s">academia.yaml (manifiesto)</span><span class="a">→</span>
+    <span class="s hot">scripts/registrar_academia.py</span><span class="a">→</span>
+    <span class="s">CHECKLIST.md</span><span class="a">+</span>
+    <span class="s">ACADEMIAS.md</span><span class="a">+</span>
+    <span class="s">academia.json</span>
+  </div>
+  <ul>
+    <li><b>academia.yaml:</b> nombre, versión, fecha, habilidad y las casillas por sección.</li>
+    <li><b>CHECKLIST.md:</b> se genera desde el manifiesto y <b>conserva las casillas ya marcadas</b>. Correrlo dos veces no cambia nada.</li>
+    <li><b>ACADEMIAS.md:</b> la familia de academias, con una fila por academia, su avance y su enlace. Se actualiza la fila de esta academia sin tocar las demás.</li>
+    <li><b>academia.json:</b> la ficha que el apartado de catálogos de DevMinus puede leer para mostrarla.</li>
+  </ul>
+
+  <h3>11.2 Cuándo se dispara</h3>
+  <ul>
+    <li><b>A mano:</b> <code>python scripts/registrar_academia.py crear</code></li>
+    <li><b>Con Claude Code:</b> un hook en <code>.claude/settings.json</code> lo corre cada vez que se edita <code>CHECKLIST.md</code> o <code>academia.yaml</code>.</li>
+    <li><b>En GitHub:</b> <code>.github/workflows/registrar-academia.yml</code> lo corre en cada push a <code>main</code> y sube los cambios.</li>
+  </ul>
+<pre><code># Registrar en el ACADEMIAS.md del repositorio de DevMinus (vecino en el laboratorio)
+python scripts/registrar_academia.py crear --registro ../devminus/documentacion/ACADEMIAS.md</code></pre>
+
+  <div class="box warn"><b class="t">Decisión pendiente en DevMinus</b>El <code>CLAUDE.md</code> y <code>MARCA.md</code> de DevMinus dicen hoy que «las academias quedan fuera de esta marca» y dejan abierta la frontera con las academias. Mostrar los catálogos de academias en DevMinus cambia esa decisión, así que conviene anotarla en <code>DECISIONES.md</code> de DevMinus antes de conectar el registro allí.</div>
+  <a class="back" href="#indice">↑ Volver al índice</a>
+</section>
+
+<!-- 12 -->
+<section id="s12">
+  <h2><span class="num">12</span>Historial de versiones</h2>
+  <table>
+    <tr><th>Versión</th><th>Fecha</th><th>Cambios</th></tr>
+    <tr><td><b>1.1</b></td><td>18 de octubre de 2026</td><td>La introducción pasa a ser «El proyecto y su relato»: el proceso elegido, palabras clave, relato con las librerías y por qué se usa cada una, y tabla de piezas con su estado.</td></tr>
+    <tr><td>1.0</td><td>18 de octubre de 2026</td><td>Primera versión: conceptos, lugar en RAG, herramientas, código, análisis de repositorios, piloto TF-IDF, métricas, conclusiones y registro de la academia.</td></tr>
+  </table>
+  <a class="back" href="#indice">↑ Volver al índice</a>
+</section>
+
+<footer>Academia LLMs · IA Engineer · Búsqueda vectorial y RAG · Versión 1.1 · 18 de octubre de 2026</footer>
+</main>
+
+<a class="fab" href="#indice" aria-label="Volver al índice">☰ Índice</a>
+</body>
+</html>
