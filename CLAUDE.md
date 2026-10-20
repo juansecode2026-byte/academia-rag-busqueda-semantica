@@ -30,12 +30,16 @@ modificarlos, y nunca lee otras academias. Registro en `DECISIONES.md`.
 | `documentacion/*.html` | Usuario | Fuente de conocimiento. No se reescribe. |
 | `CHECKLIST.md` | Claude | **Fuente de verdad** del avance y los resultados. |
 | `CHECKLIST.html` | Usuario | **Generado** desde el MD. No se edita a mano. |
-| `DECISIONES.md` | Ambos | Qué se aceptó, rechazó o aplazó, con su condición. |
+| `DECISIONES.md` | Claude | **Fuente de verdad** de qué se aceptó, rechazó o aplazó, con su condición. |
+| `DECISIONES.html` | Usuario | **Generado** desde el MD. No se edita a mano. |
 
-Cada vez que cambie `CHECKLIST.md`, regenerar el HTML:
+Los dos HTML deben estar siempre a la par con su MD. Un hook de Claude Code
+(`.claude/settings.json`) regenera ambos al editar cualquiera de los MD. Si se
+edita un MD fuera de Claude Code, correr a mano:
 
 ```
-python scripts/generar_checklist_html.py
+python scripts/generar_checklist_html.py             # regenera los dos HTML
+python scripts/generar_checklist_html.py --verificar # avisa si alguno está desfasado
 ```
 
 ## Convenciones

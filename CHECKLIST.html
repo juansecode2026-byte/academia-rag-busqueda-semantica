@@ -5,14 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Checklist — Academia RAG - Búsqueda semántica</title>
 <style>
-:root{--bg:#f5f7fb;--card:#fff;--text:#1c2230;--muted:#5a6477;--line:#e2e6ef;--primary:#2f5bea;--primary-soft:#e8eeff;--ok:#0e9f6e;--ok-soft:#e3f6ee;--warn:#c2410c;--warn-soft:#fff1e6;--code-bg:#0f172a;--code-text:#e2e8f0}
-@media (prefers-color-scheme:dark){:root{--bg:#0e1117;--card:#161b26;--text:#e6e9f0;--muted:#9aa3b5;--line:#262d3d;--primary:#7c9bff;--primary-soft:#1b2540;--ok:#34d399;--ok-soft:#10261d;--warn:#fb923c;--warn-soft:#2a1a0e;--code-bg:#0a0d14}}
+:root{--bg:#f5f7fb;--card:#fff;--text:#1c2230;--muted:#5a6477;--line:#e2e6ef;--primary:#2f5bea;--primary-soft:#e8eeff;--ok:#0e9f6e;--ok-soft:#e3f6ee;--warn:#c2410c;--warn-soft:#fff1e6;--bad:#b91c1c;--bad-soft:#fdecec;--code-bg:#0f172a;--code-text:#e2e8f0}
+@media (prefers-color-scheme:dark){:root{--bg:#0e1117;--card:#161b26;--text:#e6e9f0;--muted:#9aa3b5;--line:#262d3d;--primary:#7c9bff;--primary-soft:#1b2540;--ok:#34d399;--ok-soft:#10261d;--warn:#fb923c;--warn-soft:#2a1a0e;--bad:#f87171;--bad-soft:#2a1212;--code-bg:#0a0d14}}
 *{box-sizing:border-box}html{scroll-behavior:smooth}
 body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.65}
 header.hero{background:linear-gradient(135deg,#1d3fb8,#2f5bea 55%,#6a8cff);color:#fff;padding:50px 20px 72px;text-align:center}
 header.hero .kicker{font-size:13px;letter-spacing:.12em;text-transform:uppercase;opacity:.85;font-weight:700}
 header.hero h1{margin:8px 0;font-size:clamp(28px,6vw,42px)}
-header.hero .meta{display:inline-block;margin-top:14px;background:rgba(255,255,255,.18);padding:6px 14px;border-radius:999px;font-size:14px;font-weight:600}
+header.hero .meta{display:inline-flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:14px}
+header.hero .meta span,header.hero .meta a{background:rgba(255,255,255,.18);color:#fff;text-decoration:none;padding:6px 14px;border-radius:999px;font-size:14px;font-weight:600}
+header.hero .meta a:hover{background:rgba(255,255,255,.32)}
 main{max-width:920px;margin:0 auto;padding:0 16px 100px}
 nav#indice,section{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:26px 24px;margin:22px 0;scroll-margin-top:14px}
 nav#indice{margin-top:-42px;box-shadow:0 8px 24px rgba(0,0,0,.1)}
@@ -33,6 +35,8 @@ nav#indice ol{list-style:none;padding:0;margin:14px 0 0;display:grid;grid-templa
 nav#indice a{display:flex;gap:10px;align-items:center;text-decoration:none;color:var(--text);background:var(--bg);border:1px solid var(--line);padding:10px 13px;border-radius:10px}
 nav#indice a:hover{border-color:var(--primary);background:var(--primary-soft)}
 nav#indice a b{background:var(--primary);color:#fff;border-radius:7px;min-width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;font-size:14px;flex:none}
+nav#indice ul.sub{list-style:none;padding:0;margin:6px 0 0 38px;font-size:14px}
+nav#indice ul.sub a{border:0;padding:3px 8px;background:none}
 .check{list-style:none;padding:0;margin:10px 0}.check li{margin:8px 0}
 .check label{display:flex;gap:12px;align-items:flex-start;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:11px 14px}
 .check input{appearance:none;-webkit-appearance:none;flex:none;width:22px;height:22px;margin-top:2px;border:2px solid var(--primary);border-radius:6px;background:var(--card);position:relative}
@@ -45,27 +49,47 @@ nav#indice a b{background:var(--primary);color:#fff;border-radius:7px;min-width:
 .medido{background:var(--ok-soft);color:var(--ok)}.calculado{background:var(--primary-soft);color:var(--primary)}
 .estimado{background:var(--warn-soft);color:var(--warn)}.verificar{background:var(--line);color:var(--muted)}
 .estado{display:inline-block;font-size:12px;font-weight:700;padding:2px 10px;border-radius:999px;background:var(--primary-soft);color:var(--primary);vertical-align:middle}
+.estado.aceptado{background:var(--ok-soft);color:var(--ok)}.estado.aplazado{background:var(--warn-soft);color:var(--warn)}.estado.rechazado{background:var(--bad-soft);color:var(--bad)}
+.dec{border:1px solid var(--line);border-left:5px solid var(--primary);border-radius:12px;padding:6px 18px 14px;margin:16px 0;background:var(--bg)}
+.estado.propuesto{background:var(--primary-soft);color:var(--primary)}
+.dec.aceptado{border-left-color:var(--ok)}.dec.aplazado{border-left-color:var(--warn)}.dec.rechazado{border-left-color:var(--bad)}
+.dec h3{margin:12px 0 4px;padding-top:0;border-top:0;font-size:18px}
+a{color:var(--primary)}
+a.repo{display:inline-block;text-decoration:none;font-weight:700;font-size:14px;color:#fff;background:var(--primary);padding:7px 14px;border-radius:999px}
+a.repo:hover{opacity:.85}
+h5{margin:20px 0 6px;font-size:16px;color:var(--text)}
+.concl{margin-top:16px;border:2px solid var(--primary);border-radius:12px;padding:6px 18px 14px;background:var(--card)}
+.concl>h4{margin:10px 0 0;font-size:18px}
+.concl table{display:table}
+.score{margin:4px 0 8px;max-width:420px}.score-n{font-size:13px;font-weight:700;color:var(--primary)}.score .bar{height:10px;margin-top:4px}
+.dec dl{margin:6px 0 0;display:grid;grid-template-columns:max-content 1fr;gap:6px 14px}
+.dec dt{font-weight:700;color:var(--muted);font-size:14px}.dec dd{margin:0}
+.resumen{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
 .back{display:inline-block;margin-top:16px;text-decoration:none;font-weight:600;font-size:14px;color:var(--primary);border:1px solid var(--primary);padding:7px 14px;border-radius:999px}
 .back:hover{background:var(--primary);color:#fff}
 .fab{position:fixed;right:16px;bottom:16px;z-index:50;background:var(--primary);color:#fff;text-decoration:none;font-weight:700;padding:12px 18px;border-radius:999px;box-shadow:0 6px 18px rgba(0,0,0,.3);font-size:15px}
 footer{text-align:center;color:var(--muted);padding:10px 0 30px;font-size:14px}
+@media (max-width:560px){.dec dl{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 <header class="hero">
   <div class="kicker">Academia LLMs · IA Engineer</div>
   <h1>Checklist — Academia RAG - Búsqueda semántica</h1>
-  <span class="meta">Generado desde CHECKLIST.md · 20/10/2026</span>
+  <div class="meta"><span>Generado desde CHECKLIST.md · 20/10/2026</span><a href="DECISIONES.html">Ver Decisiones →</a></div>
 </header>
 <main>
 <nav id="indice">
   <h2>📚 Índice</h2>
-  <p class="lead">Vista de solo lectura: se genera desde <code>CHECKLIST.md</code>. Para cambiar algo, se edita el MD y se regenera.</p>
-  <div class="progress"><div class="bar"><i style="width:0%"></i></div>
-  <small>0 de 0 casillas completadas (0%)</small></div>
-  <p class="lead">Sin ítems todavía.</p>
+  <p class="lead">Vista de solo lectura generada desde <code>CHECKLIST.md</code>. Para cambiar algo se edita el MD y se regenera (el hook de Claude Code lo hace solo al editar).</p>
+  <div class="progress"><div class="bar"><i style="width:0%"></i></div><small>0 de 13 casillas completadas (0%)</small></div>
+  <ol><li><a href="#item1"><b>1</b> [1] CRM VENTAS (candyCRM) — RAG por tenant sobre catálogo y FAQ, con citas y medición (0/13)</a></li></ol>
 </nav>
-<section><div class="lead"><p>Todavía no hay ítems aceptados. El siguiente paso es invocar el agente <code>conectar-academia-proyecto</code> en modo proponer y decidir qué checklist se aplica a qué proyecto.</p></div></section>
+<section id="item1"><h2>[1] CRM VENTAS (candyCRM) — RAG por tenant sobre catálogo y FAQ, con citas y medición <span class="estado">aceptado</span></h2><p><a class="repo" href="https://github.com/Monkeyotbz/crm-ventas/tree/juanse-candycrm-ventas" target="_blank" rel="noopener">🔗 Ver el repositorio donde se construyó</a></p><div class="sec-progress">Avance de este ítem: 0 de 13</div><p>Fuente: documentacion/Guía búsqueda vectorial y rag.html §3, §5, §9 y §10; documentacion/Academia llms ia engineer de datos a agentes v1.1.html §8 y §10 Repositorio: <a href="https://github.com/Monkeyotbz/crm-ventas/tree/juanse-candycrm-ventas" target="_blank" rel="noopener">https://github.com/Monkeyotbz/crm-ventas/tree/juanse-candycrm-ventas</a> Traspaso: traspasos/CRM-VENTAS-RAG.md Ruta local: C:\Users\juans\Proyectos\LABORATORIO - AGENTES\CRM VENTAS   (la usa el recordatorio de inicio para contar commits nuevos)</p>
+<ul class="check"><li><label><input type="checkbox" disabled><span class="txt"><b>Decidir modelo de embeddings y dimensión (recomendado: 1536, sin migración) y anotar la decisión</b><small>Evidencia esperada: entrada en CRM VENTAS/docs/DECISIONES.md</small></span></label></li><li><label><input type="checkbox" disabled><span class="txt"><b>Si la dimensión no es 1536, migración nueva que cambie kb_chunks.embedding y su índice (sin editar la migración aplicada)</b><small>Evidencia esperada: archivo nuevo en CRM VENTAS/supabase/migrations/</small></span></label></li><li><label><input type="checkbox" disabled><span class="txt"><b>Convertir cada registro de catálogo y FAQ del tenant en un fragmento legible</b><small>Evidencia esperada: CRM VENTAS/scripts/rag/ingesta.* con parámetros en su README</small></span></label></li><li><label><input type="checkbox" disabled><span class="txt"><b>Generar embeddings y guardarlos en kb_chunks con tenant_id, fuente y metadata, idempotente, solo en demo-pruebas</b><small>Evidencia esperada: mismo conteo de filas en dos corridas</small></span></label></li><li><label><input type="checkbox" disabled><span class="txt"><b>Crear match_kb_chunks (security invoker, sin tenant_id por parámetro, con umbral de similitud)</b><small>Evidencia esperada: migración nueva en CRM VENTAS/supabase/migrations/</small></span></label></li><li><label><input type="checkbox" disabled><span class="txt"><b>Probar que una consulta del tenant A no recupera chunks del tenant B</b><small>Evidencia esperada: prueba o script con resultado documentado</small></span></label></li><li><label><input type="checkbox" disabled><span class="txt"><b>Recuperar top-k con los últimos 3 a 5 mensajes del cliente</b><small>Evidencia esperada: función de recuperación con prueba</small></span></label></li><li><label><input type="checkbox" disabled><span class="txt"><b>Responder solo con lo recuperado, citar fuentes en conversation_insights.citas_rag y decir "no lo sé" si no alcanza</b><small>Evidencia esperada: código de respuesta y una fila con citas_rag no vacío</small></span></label></li><li><label><input type="checkbox" disabled><span class="txt"><b>Armar el set de 30 a 50 preguntas, con vagas y sin respuesta</b><small>Evidencia esperada: CRM VENTAS/agentes-sdk/validacion-rag/</small></span></label></li><li><label><input type="checkbox" disabled><span class="txt"><b>Medir recall@k, MRR, tokens por turno, latencia p50/p95 y fidelidad, cada cifra con su etiqueta</b><small>Evidencia esperada: informe de la corrida con cifras <span class="tag medido">medido</span></small></span></label></li><li><label><input type="checkbox" disabled><span class="txt"><b>Registrar por consulta tokens, ms de recuperación, registros recuperados y similitud máxima</b><small>Evidencia esperada: migración nueva y filas reales</small></span></label></li><li><label><input type="checkbox" disabled><span class="txt"><b>Reindexar el fragmento afectado cuando cambia un dato, con prueba</b><small>Evidencia esperada: script o trigger y prueba que cambia un dato y verifica el nuevo vector</small></span></label></li><li><label><input type="checkbox" disabled><span class="txt"><b>Pruebas automáticas y README del RAG, todo en git</b><small>Evidencia esperada: carpeta del RAG en CRM VENTAS con pruebas, README y commits</small></span></label></li></ul>
+<p>Última sincronización: (sin sincronizar)</p>
+<h3>Análisis de resultados — [1]</h3>
+<p>(vacío hasta cerrar el ítem o un tramo medible)</p><a class="back" href="#indice">↑ Volver al índice</a></section>
 <footer>Checklist — Academia RAG - Búsqueda semántica · generado el 20/10/2026</footer>
 </main>
 <a class="fab" href="#indice" aria-label="Volver al índice">☰ Índice</a>
